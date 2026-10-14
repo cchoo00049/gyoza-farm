@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Meow Farm - ฟาร์มแมวลายสลิด</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts Kanit & Fredoka -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    * {
+      font-family: 'Kanit', 'Fredoka', sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+    canvas {
+      image-rendering: pixelated;
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background-color: #cbd5e1;
+      border-radius: 9999px;
+    }
+    @keyframes bounce-gentle {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+    .animate-bounce-gentle {
+      animation: bounce-gentle 1.8s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="bg-amber-50 h-screen w-screen overflow-hidden flex flex-col select-none">
+
+  <!-- TOP BAR: Status & Controls -->
+  <header class="bg-amber-100/90 backdrop-blur border-b-2 border-amber-300 px-4 py-2 flex items-center justify-between z-20 shadow-sm">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-2xl bg-amber-400 border-2 border-amber-600 flex items-center justify-center text-xl shadow-inner animate-bounce-gentle">
+        🐱
+      </div>
+      <div>
+        <h1 class="text-base font-bold text-amber-900 leading-none">ฟาร์มแมวลายสลิด</h1>
+        <p class="text-xs text-amber-700 font-medium">ก้าวเข้าสู่ชีวิตชาวไร่สุดชิล</p>
+      </div>
+    </div>
+
+    <!-- Stats: Coins & Time -->
+    <div class="flex items-center gap-3 sm:gap-6">
+      <!-- Time of Day -->
+      <div id="time-badge" class="flex items-center gap-1.5 bg-sky-100 border border-sky-300 text-sky-800 px-3 py-1 rounded-full text-xs sm:text-sm font-semibold shadow-sm">
+        <span id="time-icon">☀️</span>
+        <span id="time-text">กลางวัน</span>
+      </div>
+
+      <!-- Coins -->
+      <div class="flex items-center gap-1.5 bg-yellow-200 border-2 border-yellow-400 text-amber-900 px-3.5 py-1 rounded-full font-bold shadow-sm">
+        <span class="text-base">🪙</span>
+        <span id="coin-display" class="text-sm sm:text-base">150</span>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex gap-2">
+        <button id="btn-inventory" class="p-2 rounded-xl bg-orange-200 hover:bg-orange-300 active:scale-95 border-2 border-orange-400 text-amber-900 shadow transition-all">
+          <i data-lucide="backpack" class="w-5 h-5"></i>
+        </button>
+        <button id="btn-shop" class="p-2 rounded-xl bg-emerald-200 hover:bg-emerald-300 active:scale-95 border-2 border-emerald-400 text-emerald-900 shadow transition-all">
+          <i data-lucide="store" class="w-5 h-5"></i>
+        </button>
+        <button id="btn-sound" class="p-2 rounded-xl bg-amber-200 hover:bg-amber-300 active:scale-95 border-2 border-amber-400 text-amber-900 shadow transition-all">
+          <i data-lucide="volume-2" id="sound-icon" class="w-5 h-5"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- QUICK ACTION TOOLBAR (Bottom/Center in screen) -->
+  <div class="absolute top-16 left-1/2 -translate-x-1/2 z-20 flex gap-1.5 bg-white/90 backdrop-blur-md p-1.5 rounded-2xl border-2 border-amber-300 shadow-md">
+    <button class="tool-btn active flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all border-2 border-amber-500 bg-amber-100 text-amber-900" data-tool="hand">
+      <span>✋</span> <span>สัมผัส/เก็บ</span>
+    </button>
+    <button class="tool-btn flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all border-2 border-transparent hover:bg-amber-50 text-stone-700" data-tool="hoe">
+      <span>⛏️</span> <span>ขุด/พรวน</span>
+    </button>
+    <button class="tool-btn flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all border-2 border-transparent hover:bg-amber-50 text-stone-700" data-tool="water">
+      <span>💧</span> <span>รดน้ำ</span>
+    </button>
+    <button class="tool-btn flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all border-2 border-transparent hover:bg-amber-50 text-stone-700" data-tool="plant">
+      <span>🌱</span> <span>ปลูก</span>
+    </button>
+  </div>
+
+  <!-- GAME CANVAS CONTAINER -->
+  <main class="relative flex-1 w-full h-full overflow-hidden bg-emerald-100">
+    <canvas id="farmCanvas" class="w-full h-full block cursor-pointer"></canvas>
+
+    <!-- FLOATING POPUP TOAST (Messages) -->
+    <div id="toast" class="absolute bottom-24 left-1/2 -translate-x-1/2 pointer-events-none transition-all duration-300 opacity-0 transform translate-y-3 bg-amber-950/85 text-amber-50 px-4 py-2 rounded-xl text-sm font-medium shadow-lg backdrop-blur flex items-center gap-2 z-30">
+      <span id="toast-msg">ยินดีต้อนรับสู่ฟาร์มแมวสลิด!</span>
+    </div>
+
+    <!-- TOUCH JOYSTICK / D-PAD (Mobile friendly) -->
+    <div class="absolute bottom-5 left-5 z-20 flex flex-col items-center select-none opacity-85 hover:opacity-100 sm:bottom-8 sm:left-8">
+      <button id="dpad-up" class="w-12 h-12 bg-white/80 active:bg-amber-200 border-2 border-amber-400 rounded-2xl flex items-center justify-center text-xl shadow mb-1">⬆️</button>
+      <div class="flex gap-1">
+        <button id="dpad-left" class="w-12 h-12 bg-white/80 active:bg-amber-200 border-2 border-amber-400 rounded-2xl flex items-center justify-center text-xl shadow">⬅️</button>
+        <button id="dpad-action" class="w-12 h-12 bg-amber-400 active:bg-amber-500 border-2 border-amber-600 rounded-2xl flex items-center justify-center text-lg font-bold shadow text-amber-900">🐾</button>
+        <button id="dpad-right" class="w-12 h-12 bg-white/80 active:bg-amber-200 border-2 border-amber-400 rounded-2xl flex items-center justify-center text-xl shadow">➡️</button>
+      </div>
+      <button id="dpad-down" class="w-12 h-12 bg-white/80 active:bg-amber-200 border-2 border-amber-400 rounded-2xl flex items-center justify-center text-xl shadow mt-1">⬇️</button>
+    </div>
+
+    <!-- INTERACTION PROMPT ICON (Near Cat) -->
+    <div id="action-bubble" class="hidden absolute pointer-events-none -translate-x-1/2 -translate-y-full bg-white/95 px-2.5 py-1 rounded-xl shadow-lg border border-amber-300 text-xs font-bold text-amber-900 animate-bounce">
+      กด 🐾 หรือ Spacebar
+    </div>
+  </main>
+
+  <!-- MODAL: SEED SELECTOR (When planting) -->
+  <div id="seed-modal" class="fixed inset-0 bg-stone-900/40 backdrop-blur-sm z-40 hidden flex items-center justify-center p-4">
+    <div class="bg-amber-50 border-4 border-amber-300 rounded-3xl max-w-sm w-full p-5 shadow-2xl">
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="text-lg font-bold text-amber-900 flex items-center gap-2">
+          <span>🌱</span> เลือกเมล็ดที่จะปลูก
+        </h3>
+        <button id="close-seed-modal" class="p-1 rounded-full text-stone-500 hover:bg-stone-200">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <p class="text-xs text-stone-600 mb-3">เลือกเมล็ดที่คุณมีในกระเป๋าเพื่อหว่านลงแปลงดิน</p>
+      <div id="seed-list" class="grid grid-cols-2 gap-2.5 max-h-60 overflow-y-auto custom-scroll pr-1">
+        <!-- Dynamically filled -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: INVENTORY -->
+  <div id="inv-modal" class="fixed inset-0 bg-stone-900/40 backdrop-blur-sm z-40 hidden flex items-center justify-center p-4">
+    <div class="bg-amber-50 border-4 border-amber-400 rounded-3xl max-w-md w-full p-5 shadow-2xl">
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="text-lg font-bold text-amber-900 flex items-center gap-2">
+          <span>🎒</span> กระเป๋าฟาร์มของน้องแมว
+        </h3>
+        <button id="close-inv-modal" class="p-1 rounded-full text-stone-500 hover:bg-stone-200">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="border-b border-amber-200 mb-3 pb-2 flex gap-4 text-sm font-semibold">
+        <span class="text-amber-800 border-b-2 border-amber-500 pb-1">ผลผลิตและเมล็ด</span>
+      </div>
+      <div id="inv-items-container" class="grid grid-cols-3 gap-2.5 max-h-72 overflow-y-auto custom-scroll p-1">
+        <!-- Dynamic Items -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SHOP -->
+  <div id="shop-modal" class="fixed inset-0 bg-stone-900/40 backdrop-blur-sm z-40 hidden flex items-center justify-center p-4">
+    <div class="bg-emerald-50 border-4 border-emerald-400 rounded-3xl max-w-lg w-full p-5 shadow-2xl">
+      <div class="flex justify-between items-center mb-2">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-full bg-emerald-300 flex items-center justify-center text-lg">🏪</div>
+          <div>
+            <h3 class="text-lg font-bold text-emerald-950">ตลาดเกษตรคุณลุงแพนด้า</h3>
+            <p class="text-xs text-emerald-700">ซื้อเมล็ดพันธุ์ หรือขายผลผลิตสดๆ จากไร่</p>
+          </div>
+        </div>
+        <button id="close-shop-modal" class="p-1 rounded-full text-stone-500 hover:bg-stone-200">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Shop Tabs -->
+      <div class="flex gap-2 my-3 border-b border-emerald-200 pb-2">
+        <button id="tab-buy" class="flex-1 py-1.5 rounded-xl font-bold text-sm bg-emerald-500 text-white shadow">🛒 ซื้อเมล็ดพันธุ์</button>
+        <button id="tab-sell" class="flex-1 py-1.5 rounded-xl font-bold text-sm bg-emerald-100 text-emerald-800 hover:bg-emerald-200">💰 ขายผลผลิต</button>
+      </div>
+
+      <!-- Shop Items List -->
+      <div id="shop-items-container" class="space-y-2 max-h-80 overflow-y-auto custom-scroll pr-1">
+        <!-- Dynamic shop list -->
+      </div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT GAME LOGIC -->
+  <script>
+    // --- SYNTHESIZED SOUND SYSTEM (Web Audio API) ---
+    class SoundFX {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+      }
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContext();
+        }
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+      playTone(freq, type, duration, endFreq = null, volume = 0.15) {
+        if (!this.enabled) return;
+        this.init();
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+          if (endFreq) {
+            osc.frequency.exponentialRampToValueAtTime(endFreq, this.ctx.currentTime + duration);
+          }
+          gain.gain.setValueAtTime(volume, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + duration);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      pop() { this.playTone(400, 'sine', 0.1, 750, 0.2); }
+      dig() { this.playTone(180, 'triangle', 0.15, 80, 0.25); }
+      water() { this.playTone(600, 'sine', 0.25, 300, 0.15); }
+      coin() {
+        this.playTone(987, 'sine', 0.12, 1318, 0.15);
+        setTimeout(() => this.playTone(1318, 'sine', 0.18, 1760, 0.15), 80);
+      }
+      harvest() {
+        this.playTone(523, 'sine', 0.09, 784, 0.2);
+        setTimeout(() => this.playTone(784, 'triangle', 0.15, 1046, 0.25), 90);
+      }
+      meow() {
+        this.playTone(520, 'sine', 0.22, 680, 0.18);
+        setTimeout(() => this.playTone(680, 'sine', 0.2, 420, 0.15), 180);
+      }
+    }
+
+    const sfx = new SoundFX();
+
+    // --- GAME DATA DEFINITIONS ---
+    const CROPS = {
+      carrot: {
+        id: 'carrot',
+        name: 'แครอท',
+        seedName: 'เมล็ดแครอท',
+        icon: '🥕',
+        seedCost: 10,
+        sellPrice: 22,
+        growTime: 8, // seconds
+        color: '#f97316'
+      },
+      tomato: {
+        id: 'tomato',
+        name: 'มะเขือเทศ',
+        seedName: 'เมล็ดมะเขือเทศ',
+        icon: '🍅',
+        seedCost: 18,
+        sellPrice: 38,
+        growTime: 14,
+        color: '#ef4444'
+      },
+      strawberry: {
+        id: 'strawberry',
+        name: 'สตรอว์เบอร์รี',
+        seedName: 'เมล็ดสตรอว์เบอร์รี',
+        icon: '🍓',
+        seedCost: 28,
+        sellPrice: 60,
+        growTime: 20,
+        color: '#f43f5e'
+      },
+      corn: {
+        id: 'corn',
+        name: 'ข้าวโพดหวาน',
+        seedName: 'เมล็ดข้าวโพด',
+        icon: '🌽',
+        seedCost: 38,
+        sellPrice: 85,
+        growTime: 28,
+        color: '#eab308'
+      },
+      watermelon: {
+        id: 'watermelon',
+        name: 'แตงโมยักษ์',
+        seedName: 'เมล็ดแตงโม',
+        icon: '🍉',
+        seedCost: 55,
+        sellPrice: 130,
+        growTime: 40,
+        color: '#10b981'
+      }
+    };
+
+    // --- GAME STATE ---
+    const state = {
+      coins: 120,
+      inventory: {
+        seeds: {
+          carrot: 5,
+          tomato: 2,
+          strawberry: 1,
+          corn: 0,
+          watermelon: 0
+        },
+        crops: {
+          carrot: 0,
+          tomato: 0,
+          strawberry: 0,
+          corn: 0,
+          watermelon: 0
+        }
+      },
+      currentTool: 'hand', // 'hand', 'hoe', 'water', 'plant'
+      selectedSeedToPlant: 'carrot',
+      timeOfDay: 0, // 0 to 1200 ticks
+      plots: [] // Farm plots
+    };
+
+    // --- PLOT CLASS ---
+    class Plot {
+      constructor(x, y, size) {
+        this.x = x;
+        this.y = y;
+        this.size = size;
+        this.state = 'grass'; // 'grass', 'tilled'
+        this.isWatered = false;
+        this.crop = null;      // null or crop object { id, progress, maxTime, stage }
+      }
+
+      update(dt) {
+        if (this.crop && this.isWatered) {
+          this.crop.progress += dt;
+          if (this.crop.progress >= this.crop.maxTime) {
+            this.crop.progress = this.crop.maxTime;
+            this.crop.stage = 3; // Ready to harvest
+          } else if (this.crop.progress > this.crop.maxTime * 0.5) {
+            this.crop.stage = 2; // Growing
+          } else {
+            this.crop.stage = 1; // Sprout
+          }
+        }
+      }
+
+      draw(ctx) {
+        // Base Soil
+        if (this.state === 'grass') {
+          ctx.fillStyle = '#a3e635';
+          ctx.strokeStyle = '#84cc16';
+          ctx.lineWidth = 3;
+          roundRect(ctx, this.x, this.y, this.size, this.size, 10, true, true);
+          
+          // Little grass blades
+          ctx.fillStyle = '#65a30d';
+          ctx.beginPath();
+          ctx.arc(this.x + 12, this.y + 12, 3, 0, Math.PI * 2);
+          ctx.arc(this.x + this.size - 14, this.y + this.size - 12, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          // Tilled soil
+          ctx.fillStyle = this.isWatered ? '#582f14' : '#8d5b32';
+          ctx.strokeStyle = this.isWatered ? '#381c07' : '#6b3e1a';
+          ctx.lineWidth = 3;
+          roundRect(ctx, this.x, this.y, this.size, this.size, 12, true, true);
+
+          // Soil ridges
+          ctx.strokeStyle = this.isWatered ? '#432109' : '#784620';
+          ctx.lineWidth = 3;
+          for (let i = 1; i <= 3; i++) {
+            const lineY = this.y + (this.size / 4) * i;
+            ctx.beginPath();
+            ctx.moveTo(this.x + 8, lineY);
+            ctx.lineTo(this.x + this.size - 8, lineY);
+            ctx.stroke();
+          }
+
+          // Water drops sheen
+          if (this.isWatered) {
+            ctx.fillStyle = 'rgba(147, 197, 253, 0.35)';
+            ctx.beginPath();
+            ctx.arc(this.x + 18, this.y + 16, 5, 0, Math.PI*2);
+            ctx.arc(this.x + this.size - 20, this.y + 24, 4, 0, Math.PI*2);
+            ctx.fill();
+          }
+        }
+
+        // Draw Crop if planted
+        if (this.crop) {
+          const centerX = this.x + this.size / 2;
+          const centerY = this.y + this.size / 2;
+          const cropInfo = CROPS[this.crop.id];
+
+          if (this.crop.stage === 1) {
+            // Tiny green sprout
+            ctx.fillStyle = '#22c55e';
+            ctx.beginPath();
+            ctx.ellipse(centerX - 4, centerY + 4, 3, 7, -0.4, 0, Math.PI * 2);
+            ctx.ellipse(centerX + 4, centerY + 4, 3, 7, 0.4, 0, Math.PI * 2);
+            ctx.fill();
+            // Stem
+            ctx.strokeStyle = '#15803d';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY + 14);
+            ctx.lineTo(centerX, centerY + 4);
+            ctx.stroke();
+          } else if (this.crop.stage === 2) {
+            // Medium bush with small colored bud
+            ctx.fillStyle = '#16a34a';
+            ctx.beginPath();
+            ctx.arc(centerX - 8, centerY + 2, 7, 0, Math.PI * 2);
+            ctx.arc(centerX + 8, centerY + 2, 7, 0, Math.PI * 2);
+            ctx.arc(centerX, centerY - 6, 8, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Tiny unripe bud
+            ctx.fillStyle = cropInfo.color;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY - 2, 4.5, 0, Math.PI * 2);
+            ctx.fill();
+          } else if (this.crop.stage === 3) {
+            // Full harvestable plant with emoji
+            ctx.font = '28px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            // Sparkle / glow effect
+            ctx.fillStyle = 'rgba(253, 224, 71, 0.4)';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY - 2, 22, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillText(cropInfo.icon, centerX, centerY - 2);
+
+            // "READY!" indicator badge
+            ctx.fillStyle = '#10b981';
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            roundRect(ctx, centerX - 24, this.y + this.size - 18, 48, 14, 6, true, true);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 9px Kanit';
+            ctx.fillText('พร้อมเก็บ!', centerX, this.y + this.size - 10);
+          }
+
+          // Progress Bar for growing
+          if (this.crop.stage < 3) {
+            const barW = this.size - 16;
+            const barH = 6;
+            const barX = this.x + 8;
+            const barY = this.y + this.size - 12;
+            const pct = Math.min(1, this.crop.progress / this.crop.maxTime);
+
+            ctx.fillStyle = 'rgba(0,0,0,0.4)';
+            roundRect(ctx, barX, barY, barW, barH, 3, true, false);
+
+            ctx.fillStyle = this.isWatered ? '#38bdf8' : '#9ca3af';
+            roundRect(ctx, barX, barY, barW * pct, barH, 3, true, false);
+
+            if (!this.isWatered) {
+              // Water drop icon alert
+              ctx.font = '11px sans-serif';
+              ctx.fillText('💧', this.x + this.size - 12, this.y + 12);
+            }
+          }
+        }
+      }
+    }
+
+    // Helper: Rounded Rectangle for Canvas
+    function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
+      if (typeof stroke === 'undefined') stroke = true;
+      if (typeof radius === 'undefined') radius = 5;
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+      if (fill) ctx.fill();
+      if (stroke) ctx.stroke();
+    }
+
+    // --- TABBY CAT PLAYER CHARACTER ---
+    const cat = {
+      x: 180,
+      y: 180,
+      targetX: 180,
+      targetY: 180,
+      speed: 170, // pixels per sec
+      size: 44,
+      direction: 'down', // 'up', 'down', 'left', 'right'
+      isMoving: false,
+      tailAngle: 0,
+      tailSpeed: 5,
+      walkCycle: 0,
+
+      update(dt) {
+        let dx = 0;
+        let dy = 0;
+
+        if (keys['ArrowUp'] || keys['KeyW'] || keys['dpad_up']) { dy -= 1; this.direction = 'up'; }
+        if (keys['ArrowDown'] || keys['KeyS'] || keys['dpad_down']) { dy += 1; this.direction = 'down'; }
+        if (keys['ArrowLeft'] || keys['KeyA'] || keys['dpad_left']) { dy -= 0; dx -= 1; this.direction = 'left'; }
+        if (keys['ArrowRight'] || keys['KeyD'] || keys['dpad_right']) { dx += 1; this.direction = 'right'; }
+
+        // Touch / Click movement towards target
+        if (this.targetX !== null && this.targetY !== null) {
+          const tdx = this.targetX - (this.x + this.size / 2);
+          const tdy = this.targetY - (this.y + this.size / 2);
+          const dist = Math.hypot(tdx, tdy);
+          if (dist > 6) {
+            dx = tdx / dist;
+            dy = tdy / dist;
+            if (Math.abs(tdx) > Math.abs(tdy)) {
+              this.direction = tdx > 0 ? 'right' : 'left';
+            } else {
+              this.direction = tdy > 0 ? 'down' : 'up';
+            }
+          } else {
+            this.targetX = null;
+            this.targetY = null;
+          }
+        }
+
+        if (dx !== 0 || dy !== 0) {
+          // Normalize diagonal
+          const len = Math.hypot(dx, dy);
+          this.x += (dx / len) * this.speed * dt;
+          this.y += (dy / len) * this.speed * dt;
+          this.isMoving = true;
+          this.walkCycle += dt * 10;
+        } else {
+          this.isMoving = false;
+        }
+
+        // Tail waggle animation
+        this.tailAngle = Math.sin(Date.now() * 0.006) * 0.45;
+
+        // Boundaries clamp
+        this.x = Math.max(10, Math.min(canvas.width - this.size - 10, this.x));
+        this.y = Math.max(10, Math.min(canvas.height - this.size - 10, this.y));
+      },
+
+      draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x + this.size / 2, this.y + this.size / 2);
+
+        // Soft Drop Shadow under cat
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.beginPath();
+        ctx.ellipse(0, this.size / 2.3, this.size / 2.2, 7, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Bobbing while walking
+        const bob = this.isMoving ? Math.sin(this.walkCycle) * 2.5 : 0;
+        ctx.translate(0, bob);
+
+        // Flip if facing left
+        if (this.direction === 'left') {
+          ctx.scale(-1, 1);
+        }
+
+        // --- DRAW TABBY CAT ---
+        const orangeColor = '#f59e0b';      // Ginger Tabby base
+        const darkOrange = '#b45309';       // Tabby stripes
+        const bellyCream = '#fef3c7';       // Cream tummy/muzzle
+        const earPink = '#f472b6';          // Inner ear
+
+        // 1. Cat Tail (with tabby rings)
+        ctx.save();
+        ctx.translate(-14, 6);
+        ctx.rotate(this.tailAngle);
+        ctx.strokeStyle = orangeColor;
+        ctx.lineWidth = 6;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.quadraticCurveTo(-14, -10, -10, -22);
+        ctx.stroke();
+
+        // Tail stripes
+        ctx.strokeStyle = darkOrange;
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.moveTo(-5, -6);
+        ctx.lineTo(-7, -8);
+        ctx.moveTo(-11, -14);
+        ctx.lineTo(-13, -16);
+        ctx.stroke();
+        ctx.restore();
+
+        // 2. Cat Body
+        ctx.fillStyle = orangeColor;
+        ctx.beginPath();
+        ctx.ellipse(0, 5, 17, 14, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Tabby Stripes on Back
+        ctx.strokeStyle = darkOrange;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(-7, 0); ctx.lineTo(-7, 9);
+        ctx.moveTo(0, -2); ctx.lineTo(0, 9);
+        ctx.moveTo(7, 0); ctx.lineTo(7, 9);
+        ctx.stroke();
+
+        // Paws (Paws bobbing when walking)
+        ctx.fillStyle = bellyCream;
+        const pawOffset = this.isMoving ? Math.sin(this.walkCycle) * 3 : 0;
+        ctx.beginPath();
+        ctx.arc(-8, 16 + pawOffset, 4.5, 0, Math.PI * 2);
+        ctx.arc(8, 16 - pawOffset, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 3. Cat Head
+        ctx.fillStyle = orangeColor;
+        ctx.beginPath();
+        ctx.arc(0, -9, 14, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Cat Ears
+        // Left Ear
+        ctx.fillStyle = orangeColor;
+        ctx.beginPath();
+        ctx.moveTo(-12, -15);
+        ctx.lineTo(-15, -25);
+        ctx.lineTo(-4, -20);
+        ctx.closePath();
+        ctx.fill();
+        // Left Ear Pink
+        ctx.fillStyle = earPink;
+        ctx.beginPath();
+        ctx.moveTo(-11, -16);
+        ctx.lineTo(-13, -22);
+        ctx.lineTo(-6, -19);
+        ctx.closePath();
+        ctx.fill();
+
+        // Right Ear
+        ctx.fillStyle = orangeColor;
+        ctx.beginPath();
+        ctx.moveTo(4, -20);
+        ctx.lineTo(15, -25);
+        ctx.lineTo(12, -15);
+        ctx.closePath();
+        ctx.fill();
+        // Right Ear Pink
+        ctx.fillStyle = earPink;
+        ctx.beginPath();
+        ctx.moveTo(6, -19);
+        ctx.lineTo(13, -22);
+        ctx.lineTo(11, -16);
+        ctx.closePath();
+        ctx.fill();
+
+        // Tabby Forehead "M" marking (Signature Tabby Cat!)
+        ctx.strokeStyle = darkOrange;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(-6, -18);
+        ctx.lineTo(-3, -13);
+        ctx.lineTo(0, -17);
+        ctx.lineTo(3, -13);
+        ctx.lineTo(6, -18);
+        ctx.stroke();
+
+        // Cheeks & Muzzle
+        ctx.fillStyle = bellyCream;
+        ctx.beginPath();
+        ctx.ellipse(0, -6, 7, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Nose
+        ctx.fillStyle = earPink;
+        ctx.beginPath();
+        ctx.moveTo(-2.5, -8);
+        ctx.lineTo(2.5, -8);
+        ctx.lineTo(0, -6);
+        ctx.closePath();
+        ctx.fill();
+
+        // Mouth
+        ctx.strokeStyle = '#78350f';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(0, -6); ctx.lineTo(0, -4);
+        ctx.arc(-2, -4, 2, 0, Math.PI);
+        ctx.moveTo(0, -4);
+        ctx.arc(2, -4, 2, 0, Math.PI);
+        ctx.stroke();
+
+        // Big Cute Eyes
+        ctx.fillStyle = '#1c1917';
+        ctx.beginPath();
+        ctx.arc(-5.5, -10, 2.8, 0, Math.PI * 2);
+        ctx.arc(5.5, -10, 2.8, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Eye spark (Glint)
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(-6.5, -11, 1, 0, Math.PI * 2);
+        ctx.arc(4.5, -11, 1, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Whiskers
+        ctx.strokeStyle = '#fed7aa';
+        ctx.lineWidth = 1.3;
+        ctx.beginPath();
+        // Left Whiskers
+        ctx.moveTo(-6, -6); ctx.lineTo(-15, -8);
+        ctx.moveTo(-6, -5); ctx.lineTo(-15, -4);
+        // Right Whiskers
+        ctx.moveTo(6, -6); ctx.lineTo(15, -8);
+        ctx.moveTo(6, -5); ctx.lineTo(15, -4);
+        ctx.stroke();
+
+        // Cute Farmer Straw Hat or Scarf (Cozy accessory)
+        ctx.fillStyle = '#ef4444'; // Red cozy neckerchief
+        ctx.beginPath();
+        ctx.moveTo(-7, -1);
+        ctx.lineTo(7, -1);
+        ctx.lineTo(0, 5);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.restore();
+      }
+    };
+
+    // --- CANVAS & RESIZING ---
+    const canvas = document.getElementById('farmCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+      generatePlotsIfEmpty();
+    }
+
+    // --- FARM PLOTS GENERATION ---
+    function generatePlotsIfEmpty() {
+      if (state.plots.length > 0) return;
+
+      const plotSize = 64;
+      const gap = 14;
+      const cols = Math.min(6, Math.max(3, Math.floor((canvas.width - 60) / (plotSize + gap))));
+      const rows = Math.min(4, Math.max(2, Math.floor((canvas.height - 130) / (plotSize + gap))));
+
+      const startX = (canvas.width - (cols * (plotSize + gap) - gap)) / 2;
+      const startY = 85;
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const px = startX + c * (plotSize + gap);
+          const py = startY + r * (plotSize + gap);
+          const p = new Plot(px, py, plotSize);
+          // Pre-till a few plots for tutorial feel
+          if ((r === 0 && c === 0) || (r === 0 && c === 1)) {
+            p.state = 'tilled';
+            p.isWatered = true;
+            if (c === 0) {
+              p.crop = { id: 'carrot', progress: 5, maxTime: 8, stage: 2 };
+            }
+          }
+          state.plots.push(p);
+        }
+      }
+    }
+
+    // --- INPUT HANDLING ---
+    const keys = {};
+    window.addEventListener('keydown', (e) => {
+      keys[e.code] = true;
+      if (e.code === 'Space') {
+        interactWithNearestPlot();
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      keys[e.code] = false;
+    });
+
+    // Mobile D-Pad Events
+    function bindDpad(btnId, keyCode) {
+      const btn = document.getElementById(btnId);
+      const start = (e) => { e.preventDefault(); keys[keyCode] = true; sfx.init(); };
+      const end = (e) => { e.preventDefault(); keys[keyCode] = false; };
+      btn.addEventListener('mousedown', start);
+      btn.addEventListener('mouseup', end);
+      btn.addEventListener('mouseleave', end);
+      btn.addEventListener('touchstart', start);
+      btn.addEventListener('touchend', end);
+    }
+
+    bindDpad('dpad-up', 'dpad_up');
+    bindDpad('dpad-down', 'dpad_down');
+    bindDpad('dpad-left', 'dpad_left');
+    bindDpad('dpad-right', 'dpad_right');
+
+    const dpadAction = document.getElementById('dpad-action');
+    const handleActionTouch = (e) => {
+      e.preventDefault();
+      sfx.init();
+      sfx.meow();
+      interactWithNearestPlot();
+    };
+    dpadAction.addEventListener('click', handleActionTouch);
+
+    // Canvas Click / Tap: Move Cat & Interact
+    canvas.addEventListener('click', (e) => {
+      sfx.init();
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      // Check if user clicked directly on a plot
+      let clickedPlot = null;
+      for (const p of state.plots) {
+        if (clickX >= p.x && clickX <= p.x + p.size && clickY >= p.y && clickY <= p.y + p.size) {
+          clickedPlot = p;
+          break;
+        }
+      }
+
+      if (clickedPlot) {
+        // Move towards the plot then interact
+        cat.targetX = clickedPlot.x + clickedPlot.size / 2;
+        cat.targetY = clickedPlot.y + clickedPlot.size / 2;
+        applyToolToPlot(clickedPlot);
+      } else {
+        // Just walk towards click position
+        cat.targetX = clickX;
+        cat.targetY = clickY;
+      }
+    });
+
+    // --- TOOL SELECTION ---
+    const toolBtns = document.querySelectorAll('.tool-btn');
+    toolBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        toolBtns.forEach(b => {
+          b.classList.remove('bg-amber-100', 'border-amber-500', 'text-amber-900');
+          b.classList.add('border-transparent', 'text-stone-700');
+        });
+        btn.classList.add('bg-amber-100', 'border-amber-500', 'text-amber-900');
+        btn.classList.remove('border-transparent');
+        state.currentTool = btn.dataset.tool;
+        sfx.pop();
+
+        if (state.currentTool === 'plant') {
+          openSeedModal();
+        } else {
+          showToast(`เลือกเครื่องมือ: ${getToolName(state.currentTool)}`);
+        }
+      });
+    });
+
+    function getToolName(tool) {
+      switch(tool) {
+        case 'hoe': return '⛏️ จอบขุดดิน';
+        case 'water': return '💧 บัวรดน้ำ';
+        case 'plant': return '🌱 ปลูกเมล็ด';
+        default: return '✋ สัมผัส/เก็บเกี่ยว';
+      }
+    }
+
+    // --- PLOT INTERACTION LOGIC ---
+    function getNearestPlot() {
+      const catCenterX = cat.x + cat.size / 2;
+      const catCenterY = cat.y + cat.size / 2;
+      let nearest = null;
+      let minDist = 75; // Interaction reach distance
+
+      for (const p of state.plots) {
+        const pCenterX = p.x + p.size / 2;
+        const pCenterY = p.y + p.size / 2;
+        const d = Math.hypot(catCenterX - pCenterX, catCenterY - pCenterY);
+        if (d < minDist) {
+          nearest = p;
+          minDist = d;
+        }
+      }
+      return nearest;
+    }
+
+    function interactWithNearestPlot() {
+      const plot = getNearestPlot();
+      if (!plot) {
+        showToast('เดินเข้าไปใกล้ๆ แปลงผักเพื่อเริ่มทำสวนนะเหมียว~');
+        sfx.meow();
+        return;
+      }
+      applyToolToPlot(plot);
+    }
+
+    function applyToolToPlot(plot) {
+      // 1. AUTO-HARVEST FIRST: If crop ready, pick it regardless of tool
+      if (plot.crop && plot.crop.stage === 3) {
+        const cropId = plot.crop.id;
+        state.inventory.crops[cropId] = (state.inventory.crops[cropId] || 0) + 1;
+        showToast(`🎉 เก็บเกี่ยว ${CROPS[cropId].name} สำเร็จ! +1`);
+        sfx.harvest();
+        plot.crop = null;
+        plot.isWatered = false; // Reset water after harvest
+        updateUI();
+        return;
+      }
+
+      // 2. APPLY CHOSEN TOOL
+      switch(state.currentTool) {
+        case 'hoe':
+          if (plot.state === 'grass') {
+            plot.state = 'tilled';
+            sfx.dig();
+            showToast('พรวนดินเรียบร้อยแล้ว พร้อมสำหรับปลูกผัก!');
+          } else if (plot.state === 'tilled' && !plot.crop) {
+            showToast('แปลงดินนี้ถูกพรวนไว้แล้วนะเหมียว');
+          }
+          break;
+
+        case 'water':
+          if (plot.state === 'tilled') {
+            if (!plot.isWatered) {
+              plot.isWatered = true;
+              sfx.water();
+              showToast('รดน้ำฉ่ำๆ ดินชุ่มชื้น พืชพร้อมโตแล้ว!');
+            } else {
+              showToast('แปลงดินนี้ชุ่มน้ำดีแล้วจ้า');
+            }
+          } else {
+            showToast('ต้องใช้จอบขุดพรวนดินก่อนจึงจะรดน้ำได้นะ');
+          }
+          break;
+
+        case 'plant':
+          if (plot.state !== 'tilled') {
+            showToast('ต้องพรวนดินก่อนจึงจะหว่านเมล็ดได้!');
+            return;
+          }
+          if (plot.crop) {
+            showToast('แปลงนี้มีพืชกำลังเจริญเติบโตอยู่แล้ว');
+            return;
+          }
+          const chosenSeed = state.selectedSeedToPlant;
+          if (state.inventory.seeds[chosenSeed] > 0) {
+            state.inventory.seeds[chosenSeed]--;
+            plot.crop = {
+              id: chosenSeed,
+              progress: 0,
+              maxTime: CROPS[chosenSeed].growTime,
+              stage: 1
+            };
+            sfx.pop();
+            showToast(`ปลูก ${CROPS[chosenSeed].name} เรียบร้อยแล้ว!`);
+            updateUI();
+          } else {
+            showToast(`เมล็ดพันธุ์ ${CROPS[chosenSeed].name} หมดแล้ว! ซื้อเพิ่มที่ร้านค้าได้นะ`);
+            openSeedModal();
+          }
+          break;
+
+        case 'hand':
+        default:
+          if (plot.state === 'grass') {
+            plot.state = 'tilled';
+            sfx.dig();
+            showToast('ใช้กรงเล็บช่วยพรวนดินสำเร็จ!');
+          } else if (!plot.isWatered && plot.state === 'tilled') {
+            plot.isWatered = true;
+            sfx.water();
+            showToast('รดน้ำแปลงผักให้สดชื่น!');
+          } else if (plot.crop) {
+            showToast(`ต้น ${CROPS[plot.crop.id].name} กำลังโตอย่างสดชื่น~`);
+          } else {
+            showToast('แปลงว่างเปล่า เลือกเมล็ดมาปลูกกันเถอะ');
+          }
+          break;
+      }
+    }
+
+    // --- SEED SELECTOR MODAL ---
+    const seedModal = document.getElementById('seed-modal');
+    const seedListContainer = document.getElementById('seed-list');
+    document.getElementById('close-seed-modal').onclick = () => seedModal.classList.add('hidden');
+
+    function openSeedModal() {
+      seedListContainer.innerHTML = '';
+      Object.keys(CROPS).forEach(id => {
+        const crop = CROPS[id];
+        const count = state.inventory.seeds[id] || 0;
+        const btn = document.createElement('button');
+        btn.className = `flex items-center justify-between p-3 rounded-2xl border-2 transition-all ${
+          state.selectedSeedToPlant === id ? 'border-amber-500 bg-amber-100 ring-2 ring-amber-300' : 'border-stone-200 bg-white hover:bg-stone-50'
+        }`;
+        btn.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">${crop.icon}</span>
+            <div class="text-left">
+              <div class="text-xs font-bold text-amber-950">${crop.name}</div>
+              <div class="text-[10px] text-stone-500">โตใน ${crop.growTime} วิ</div>
+            </div>
+          </div>
+          <span class="text-xs font-extrabold px-2 py-0.5 rounded-full ${count > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-600'}">
+            x${count}
+          </span>
+        `;
+        btn.onclick = () => {
+          state.selectedSeedToPlant = id;
+          seedModal.classList.add('hidden');
+          showToast(`เลือก ${crop.name} สำหรับการปลูก`);
+          sfx.pop();
+        };
+        seedListContainer.appendChild(btn);
+      });
+      seedModal.classList.remove('hidden');
+    }
+
+    // --- INVENTORY MODAL ---
+    const invModal = document.getElementById('inv-modal');
+    document.getElementById('btn-inventory').onclick = () => {
+      sfx.pop();
+      renderInventory();
+      invModal.classList.remove('hidden');
+    };
+    document.getElementById('close-inv-modal').onclick = () => invModal.classList.add('hidden');
+
+    function renderInventory() {
+      const container = document.getElementById('inv-items-container');
+      container.innerHTML = '';
+      
+      // Render Crops
+      Object.keys(CROPS).forEach(id => {
+        const crop = CROPS[id];
+        const cropCount = state.inventory.crops[id] || 0;
+        const seedCount = state.inventory.seeds[id] || 0;
+
+        if (cropCount > 0 || seedCount > 0) {
+          // Crop Card
+          if (cropCount > 0) {
+            const card = document.createElement('div');
+            card.className = 'bg-amber-100/70 border border-amber-300 rounded-2xl p-2.5 text-center flex flex-col items-center justify-center';
+            card.innerHTML = `
+              <span class="text-3xl mb-1">${crop.icon}</span>
+              <span class="text-xs font-bold text-amber-900">${crop.name}</span>
+              <span class="text-xs font-extrabold text-amber-700 bg-white/80 px-2 rounded-full mt-1">x${cropCount}</span>
+            `;
+            container.appendChild(card);
+          }
+          // Seed Card
+          if (seedCount > 0) {
+            const card = document.createElement('div');
+            card.className = 'bg-stone-100 border border-stone-300 rounded-2xl p-2.5 text-center flex flex-col items-center justify-center';
+            card.innerHTML = `
+              <span class="text-2xl mb-1">🌱</span>
+              <span class="text-[11px] font-bold text-stone-800">${crop.seedName}</span>
+              <span class="text-xs font-extrabold text-stone-600 bg-white px-2 rounded-full mt-1">x${seedCount}</span>
+            `;
+            container.appendChild(card);
+          }
+        }
+      });
+
+      if (container.children.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-3 py-8 text-center text-stone-400 text-sm">
+            กระเป๋ายังว่างเปล่า ไปซื้อเมล็ดพันธุ์ที่ร้านค้ามาปลูกสิเหมียว!
+          </div>
+        `;
+      }
+    }
+
+    // --- SHOP MODAL ---
+    const shopModal = document.getElementById('shop-modal');
+    const tabBuy = document.getElementById('tab-buy');
+    const tabSell = document.getElementById('tab-sell');
+    let shopMode = 'buy';
+
+    document.getElementById('btn-shop').onclick = () => {
+      sfx.pop();
+      renderShop();
+      shopModal.classList.remove('hidden');
+    };
+    document.getElementById('close-shop-modal').onclick = () => shopModal.classList.add('hidden');
+
+    tabBuy.onclick = () => {
+      shopMode = 'buy';
+      tabBuy.className = 'flex-1 py-1.5 rounded-xl font-bold text-sm bg-emerald-500 text-white shadow';
+      tabSell.className = 'flex-1 py-1.5 rounded-xl font-bold text-sm bg-emerald-100 text-emerald-800 hover:bg-emerald-200';
+      renderShop();
+    };
+
+    tabSell.onclick = () => {
+      shopMode = 'sell';
+      tabSell.className = 'flex-1 py-1.5 rounded-xl font-bold text-sm bg-emerald-500 text-white shadow';
+      tabBuy.className = 'flex-1 py-1.5 rounded-xl font-bold text-sm bg-emerald-100 text-emerald-800 hover:bg-emerald-200';
+      renderShop();
+    };
+
+    function renderShop() {
+      const container = document.getElementById('shop-items-container');
+      container.innerHTML = '';
+
+      if (shopMode === 'buy') {
+        Object.keys(CROPS).forEach(id => {
+          const crop = CROPS[id];
+          const row = document.createElement('div');
+          row.className = 'flex items-center justify-between p-3 bg-white border border-emerald-200 rounded-2xl shadow-sm';
+          row.innerHTML = `
+            <div class="flex items-center gap-3">
+              <span class="text-2xl">${crop.icon}</span>
+              <div>
+                <h4 class="text-sm font-bold text-stone-800">${crop.seedName}</h4>
+                <p class="text-xs text-stone-500">ระยะโต: ${crop.growTime} วิ • ขายได้ ${crop.sellPrice}🪙</p>
+              </div>
+            </div>
+            <button class="buy-btn bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs sm:text-sm px-3.5 py-1.5 rounded-xl shadow flex items-center gap-1">
+              <span>${crop.seedCost}</span> 🪙
+            </button>
+          `;
+          row.querySelector('.buy-btn').onclick = () => {
+            if (state.coins >= crop.seedCost) {
+              state.coins -= crop.seedCost;
+              state.inventory.seeds[id] = (state.inventory.seeds[id] || 0) + 1;
+              sfx.coin();
+              showToast(`ซื้อ ${crop.seedName} สำเร็จ!`);
+              updateUI();
+            } else {
+              showToast('เหรียญทองไม่เพียงพอ รีบเก็บเกี่ยวผลผลิตไปขายนะ!');
+            }
+          };
+          container.appendChild(row);
+        });
+      } else {
+        // Sell Tab
+        let hasAnyCrop = false;
+        Object.keys(CROPS).forEach(id => {
+          const crop = CROPS[id];
+          const count = state.inventory.crops[id] || 0;
+          if (count > 0) {
+            hasAnyCrop = true;
+            const row = document.createElement('div');
+            row.className = 'flex items-center justify-between p-3 bg-white border border-amber-200 rounded-2xl shadow-sm';
+            row.innerHTML = `
+              <div class="flex items-center gap-3">
+                <span class="text-3xl">${crop.icon}</span>
+                <div>
+                  <h4 class="text-sm font-bold text-stone-800">${crop.name}</h4>
+                  <p class="text-xs text-stone-500">มีอยู่ ${count} ชิ้น (ชิ้นละ ${crop.sellPrice} 🪙)</p>
+                </div>
+              </div>
+              <button class="sell-btn bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold text-xs sm:text-sm px-3.5 py-1.5 rounded-xl shadow flex items-center gap-1">
+                ขาย 1 ชิ้น (+${crop.sellPrice}🪙)
+              </button>
+            `;
+            row.querySelector('.sell-btn').onclick = () => {
+              if (state.inventory.crops[id] > 0) {
+                state.inventory.crops[id]--;
+                state.coins += crop.sellPrice;
+                sfx.coin();
+                showToast(`ขาย ${crop.name} ได้เงิน ${crop.sellPrice} 🪙!`);
+                updateUI();
+                renderShop();
+              }
+            };
+            container.appendChild(row);
+          }
+        });
+
+        if (!hasAnyCrop) {
+          container.innerHTML = `
+            <div class="text-center py-8 text-stone-400 text-sm">
+              ไม่มีผลผลิตให้ขายเลยเหมียว ปลูกผักแล้วรดน้ำรอเก็บเกี่ยวนะ!
+            </div>
+          `;
+        }
+      }
+    }
+
+    // --- SOUND TOGGLE ---
+    const soundBtn = document.getElementById('btn-sound');
+    soundBtn.onclick = () => {
+      sfx.enabled = !sfx.enabled;
+      document.getElementById('sound-icon').setAttribute('data-lucide', sfx.enabled ? 'volume-2' : 'volume-x');
+      lucide.createIcons();
+      showToast(sfx.enabled ? 'เปิดเสียงเอฟเฟกต์ 🔊' : 'ปิดเสียงเอฟเฟกต์ 🔇');
+    };
+
+    // --- TOAST NOTIFICATIONS ---
+    let toastTimeout = null;
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-msg');
+      toastMsg.innerText = msg;
+      toast.classList.remove('opacity-0', 'translate-y-3');
+      toast.classList.add('opacity-100', 'translate-y-0');
+
+      if (toastTimeout) clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'translate-y-3');
+      }, 2400);
+    }
+
+    function updateUI() {
+      document.getElementById('coin-display').innerText = state.coins;
+    }
+
+    // --- DAY / NIGHT CYCLE ---
+    function updateDayNightCycle(dt) {
+      state.timeOfDay = (state.timeOfDay + dt * 10) % 1200;
+      const isNight = state.timeOfDay > 600;
+      const timeBadge = document.getElementById('time-badge');
+      const timeIcon = document.getElementById('time-icon');
+      const timeText = document.getElementById('time-text');
+
+      if (isNight) {
+        timeBadge.className = 'flex items-center gap-1.5 bg-indigo-900 border border-indigo-700 text-indigo-200 px-3 py-1 rounded-full text-xs sm:text-sm font-semibold shadow-sm';
+        timeIcon.innerText = '🌙';
+        timeText.innerText = 'กลางคืน';
+      } else {
+        timeBadge.className = 'flex items-center gap-1.5 bg-sky-100 border border-sky-300 text-sky-800 px-3 py-1 rounded-full text-xs sm:text-sm font-semibold shadow-sm';
+        timeIcon.innerText = '☀️';
+        timeText.innerText = 'กลางวัน';
+      }
+    }
+
+    function drawLightingOverlay(ctx) {
+      const isNight = state.timeOfDay > 600;
+      if (isNight) {
+        // Ambient soft night blue
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.35)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Cat lantern warmth
+        const grad = ctx.createRadialGradient(
+          cat.x + cat.size / 2, cat.y + cat.size / 2, 10,
+          cat.x + cat.size / 2, cat.y + cat.size / 2, 120
+        );
+        grad.addColorStop(0, 'rgba(254, 240, 138, 0.25)');
+        grad.addColorStop(1, 'rgba(254, 240, 138, 0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(cat.x + cat.size / 2, cat.y + cat.size / 2, 120, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // --- DECORATIVE NATURE (Butterflies, Little Flowers) ---
+    const decorations = [];
+    function initDecorations() {
+      decorations.length = 0;
+      for (let i = 0; i < 18; i++) {
+        decorations.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          type: Math.random() > 0.4 ? 'flower' : 'pebble',
+          color: ['#f472b6', '#fbbf24', '#c084fc', '#38bdf8'][Math.floor(Math.random() * 4)]
+        });
+      }
+    }
+
+    function drawDecorations(ctx) {
+      decorations.forEach(d => {
+        if (d.type === 'flower') {
+          ctx.fillStyle = d.color;
+          ctx.beginPath();
+          ctx.arc(d.x, d.y, 3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#fef08a';
+          ctx.beginPath();
+          ctx.arc(d.x, d.y, 1.2, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.fillStyle = '#94a3b8';
+          ctx.beginPath();
+          ctx.ellipse(d.x, d.y, 3.5, 2, 0.2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
+    }
+
+    // --- GAME LOOP ---
+    let lastTime = performance.now();
+
+    function gameLoop(now) {
+      const dt = Math.min((now - lastTime) / 1000, 0.1);
+      lastTime = now;
+
+      // 1. Update Game States
+      cat.update(dt);
+      state.plots.forEach(p => p.update(dt));
+      updateDayNightCycle(dt);
+
+      // Check nearest plot for UI Bubble prompt
+      const nearPlot = getNearestPlot();
+      const actionBubble = document.getElementById('action-bubble');
+      if (nearPlot) {
+        actionBubble.style.left = `${cat.x + cat.size/2}px`;
+        actionBubble.style.top = `${cat.y - 12}px`;
+        actionBubble.classList.remove('hidden');
+        if (nearPlot.crop && nearPlot.crop.stage === 3) {
+          actionBubble.innerText = '🌾 กด 🐾 เก็บเกี่ยว!';
+        } else if (state.currentTool === 'hoe') {
+          actionBubble.innerText = '⛏️ กด 🐾 พรวนดิน';
+        } else if (state.currentTool === 'water') {
+          actionBubble.innerText = '💧 กด 🐾 รดน้ำ';
+        } else if (state.currentTool === 'plant') {
+          actionBubble.innerText = '🌱 กด 🐾 ปลูก';
+        } else {
+          actionBubble.innerText = '🐾 สัมผัสแปลงดิน';
+        }
+      } else {
+        actionBubble.classList.add('hidden');
+      }
+
+      // 2. Clear & Draw Farm Canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Cute Grass check pattern
+      ctx.fillStyle = '#86efac';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      drawDecorations(ctx);
+
+      // Farm fence boundary at the top
+      ctx.fillStyle = '#b45309';
+      for (let fx = 10; fx < canvas.width; fx += 32) {
+        ctx.fillRect(fx, 45, 8, 22);
+      }
+      ctx.fillRect(5, 52, canvas.width - 10, 6);
+
+      // Draw all plots
+      state.plots.forEach(p => p.draw(ctx));
+
+      // Draw Tabby Cat
+      cat.draw(ctx);
+
+      // Atmosphere & Night filter
+      drawLightingOverlay(ctx);
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    // --- INITIALIZATION ---
+    window.onload = () => {
+      lucide.createIcons();
+      resizeCanvas();
+      initDecorations();
+      window.addEventListener('resize', () => {
+        resizeCanvas();
+        initDecorations();
+      });
+      requestAnimationFrame(gameLoop);
+      showToast('🐾 สวัสดีเหมียว! ยินดีต้อนรับสู่ฟาร์มแสนสุข');
+    };
+  </script>
+</body>
+</html>
